@@ -6,7 +6,7 @@ from dataclasses import asdict
 from typing import Type, Callable
 from .messages import MqttMessage
 
-class MqttClient:
+class ShepherdMqtt:
     def __init__(self, service, will = ""):
         self._mqttc = Client("localhost", will=Will(topic=f"{service}/status", payload=will))
         self._subs = {}

@@ -1,5 +1,5 @@
 import asyncio
-from shepherdx.mqtt import MqttClient, MqttMessage
+from shepherdx.common.mqtt import ShepherdMqtt, MqttMessage
 from dataclasses import dataclass
 
 @dataclass
@@ -7,7 +7,7 @@ class CountMessage:
     num: int
 
 async def main():
-    async with MqttClient("test_service") as client:
+    async with ShepherdMqtt("test_service") as client:
         async def on_count(msg: CountMessage):
             print(f"Count: {msg.num}")
 

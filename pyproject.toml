@@ -7,5 +7,7 @@ requires-python = ">=3.9"
 dependencies = [
     "aiomqtt>=2.4.0",
     "asyncio>=4.0.0",
+    "fastapi>=0.124.4",
     "typing>=3.10.0.0",
+    "uvicorn>=0.38.0",
 ]
