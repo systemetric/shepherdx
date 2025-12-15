@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from shepherdx.common.config import Config
 
 class ShepherdApp:
-    def __init__(self, host, port):
+    def __init__(self, host: str, port: int):
         self._config = Config()
 
         self._host = host
