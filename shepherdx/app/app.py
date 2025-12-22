@@ -5,6 +5,8 @@ from fastapi.staticfiles import StaticFiles
 
 from shepherdx.common.config import Config
 
+from .router import Router
+
 class ShepherdApp:
     def __init__(self, host: str, port: int):
         self._config = Config()
@@ -12,10 +14,13 @@ class ShepherdApp:
         self._host = host
         self._port = port
         self._app = FastAPI()
+        self._router = Router()
 
         self._app.mount("/editor", StaticFiles(directory=self._config.editor_path, html=True), name="editor")
         self._app.mount("/docs", StaticFiles(directory=self._config.docs_path, html=True), name="docs")
         self._app.mount("/static", StaticFiles(directory=self._config.static_path, html=True), name="static")
+
+        self._app.include_router(self._router.files_router)
 
     def run(self):
         uvicorn.run(self._app, port=self._port, host=self._host)
