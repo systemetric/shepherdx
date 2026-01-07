@@ -12,7 +12,7 @@ class Editor:
     def _get_blocks(self) -> dict:
         blocks = {}
         if self._config.blocks_path.exists():
-            with open(self._config.blocks_path, 'r') as f:
+            with open(self._config.blocks_path, "r") as f:
                 try:
                     blocks = json.load(f)
                 except ValueError:

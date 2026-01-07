@@ -21,6 +21,7 @@ class ShepherdApp:
         self._app.mount("/static", StaticFiles(directory=self._config.static_path, html=True), name="static")
 
         self._app.include_router(self._router.files_router)
+        self._app.include_router(self._router.upload_router)
 
     def run(self):
         uvicorn.run(self._app, port=self._port, host=self._host)
