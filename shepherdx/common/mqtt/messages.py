@@ -5,3 +5,7 @@ from dataclasses import dataclass
 @dataclass
 class MqttMessage:
     pass
+
+@dataclass
+class CountMessage(MqttMessage):
+    num: int

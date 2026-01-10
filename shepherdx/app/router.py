@@ -2,14 +2,19 @@ from fastapi import APIRouter, HTTPException, Response, Request, UploadFile
 from pathlib import Path
 
 from shepherdx.common import Config
+from shepherdx.common.mqtt import ShepherdMqtt
+from shepherdx.common.mqtt.messages import CountMessage
+from .control import Control
 from .editor import Editor
 from .upload import Upload
 
 class Router:
-    def __init__(self):
+    def __init__(self, get_mqttc):
         self._config = Config()
+        self._control = Control()
         self._editor = Editor()
         self._upload = Upload()
+        self._get_mqttc = get_mqttc
 
         self._files_router = APIRouter(prefix="/files")
         self._files_router.add_api_route("/list", self.get_files, methods=["GET"])
@@ -28,6 +33,9 @@ class Router:
     @property
     def upload_router(self):
         return self._upload_router
+
+    async def _get_mqtt_client(self):
+        return await self._get_mqttc()
 
     async def get_files(self):
         return await self._editor.get_files()

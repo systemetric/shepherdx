@@ -10,7 +10,7 @@ class ShepherdMqtt:
     def __init__(self, service, will = ""):
         self._mqttc = Client("localhost", will=Will(topic=f"{service}/status", payload=will))
         self._subs = {}
-        asyncio.create_task(self._loop())
+        self._task = asyncio.create_task(self.loop())
 
     async def __aenter__(self):
         await self._mqttc.__aenter__()
@@ -20,7 +20,7 @@ class ShepherdMqtt:
         await self._mqttc.__aexit__(type, val, db)
         return False
 
-    async def _loop(self):
+    async def loop(self):
         async for msg in self._mqttc.messages:
             topic = msg.topic.value
             payload = json.loads(msg.payload.decode())
