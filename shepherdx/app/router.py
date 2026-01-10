@@ -1,9 +1,10 @@
+import json
+
 from fastapi import APIRouter, HTTPException, Response, Request, UploadFile
 from pathlib import Path
+from pydantic import BaseModel
 
-from shepherdx.common import Config
-from shepherdx.common.mqtt import ShepherdMqtt
-from shepherdx.common.mqtt.messages import CountMessage
+from shepherdx.common import Config, UserConfig
 from .control import Control
 from .editor import Editor
 from .upload import Upload
@@ -26,6 +27,10 @@ class Router:
         self._upload_router.add_api_route("/file", self.upload_file, methods=["POST"], status_code=201)
         self._upload_router.add_api_route("/team-image", self.upload_team_image, methods=["POST"], status_code=201)
 
+        self._control_router = APIRouter(prefix="/control")
+        self._control_router.add_api_route("/start", self.control_start, methods=["POST"], status_code=204)
+        self._control_router.add_api_route("/stop", self.control_stop, methods=["POST"], status_code=204)
+
     @property
     def files_router(self):
         return self._files_router
@@ -34,7 +39,12 @@ class Router:
     def upload_router(self):
         return self._upload_router
 
-    async def _get_mqtt_client(self):
+    @property
+    def control_router(self):
+        return self._control_router
+
+    @property
+    async def mqttc(self):
         return await self._get_mqttc()
 
     async def get_files(self):
@@ -69,4 +79,20 @@ class Router:
             self._upload.upload_team_image(f)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to upload team image: {e}")
+
+    async def control_start(self, request: Request):
+        try:
+            body = await request.body()
+            params = json.loads(body)
+            self._control.set_user_config(UserConfig(**params))
+
+            await self._control.start_user(await self.mqttc)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to send usercode start message: {e}")
+
+    async def control_stop(self):
+        try:
+            await self._control.stop_user(await self.mqttc)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to send usercode stop message: {e}")
 

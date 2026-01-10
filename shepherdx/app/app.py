@@ -8,7 +8,6 @@ from fastapi.staticfiles import StaticFiles
 
 from shepherdx.common import Config
 from shepherdx.common.mqtt import ShepherdMqtt
-from shepherdx.common.mqtt.messages import CountMessage
 
 from .router import Router
 
@@ -29,6 +28,7 @@ class ShepherdApp:
 
         self._app.include_router(self._router.files_router)
         self._app.include_router(self._router.upload_router)
+        self._app.include_router(self._router.control_router)
 
     async def _init_mqtt(self, app: FastAPI):
         async with ShepherdMqtt(SHEPHERD_SERVICE_ID) as client:
