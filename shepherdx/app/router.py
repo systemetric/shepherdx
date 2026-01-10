@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Response, Request, UploadFile
 from pathlib import Path
 
-from shepherdx.common.config import Config
+from shepherdx.common import Config
 from .editor import Editor
 from .upload import Upload
 

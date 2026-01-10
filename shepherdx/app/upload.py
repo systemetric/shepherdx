@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import UploadFile
 from PIL import Image
 
-from shepherdx.common.config import Config
+from shepherdx.common import Config
 
 class Upload:
     def __init__(self):

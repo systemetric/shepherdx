@@ -3,7 +3,7 @@ import json
 
 from pathlib import Path
 
-from shepherdx.common.config import Config
+from shepherdx.common import Config
 
 class Editor:
     def __init__(self):
