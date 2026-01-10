@@ -1,3 +1,4 @@
+import os
 import shutil
 import zipfile
 import tempfile
@@ -13,6 +14,9 @@ class Upload:
         self._config = Config()
 
     async def _process_python(self, f: UploadFile):
+        shutil.rmtree(self._config.user_cur_path, ignore_errors=True)
+        os.makedirs(self._config.user_cur_path, exist_ok=True)
+
         content = await f.read()
         with open(self._config.user_main_path, "wb") as f:
             f.write(content)
