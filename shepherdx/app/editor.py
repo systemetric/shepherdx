@@ -37,7 +37,7 @@ class Editor:
 
         return project_paths
 
-    def get_files(self) -> dict:
+    async def get_files(self) -> dict:
         blocks = self._get_blocks()
         projects = self._get_projects()
 
@@ -46,7 +46,7 @@ class Editor:
             "projects": projects,
         }
 
-    def load_file(self, name: Path) -> dict:
+    async def load_file(self, name: Path) -> dict:
         path = self._config.user_src_path / name
 
         with open(path, "r") as f:
@@ -57,13 +57,13 @@ class Editor:
             "content": content,
         }
 
-    def save_file(self, name: Path, body: str):
+    async def save_file(self, name: Path, body: str):
         path = self._config.user_src_path / name
 
         with open(path, "w") as f:
             f.write(body)
 
-    def delete_file(self, name: Path):
+    async def delete_file(self, name: Path):
         if name == "blocks.json":
             return
 

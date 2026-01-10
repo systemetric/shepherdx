@@ -36,7 +36,7 @@ class Router:
         name = Path(filename)
 
         try:
-            return self._editor.load_file(name)
+            return await self._editor.load_file(name)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to load {filename}: {e}")
 
@@ -44,7 +44,7 @@ class Router:
         name = Path(filename)
 
         try:
-            self._editor.save_file(name, (await request.body()).decode("utf-8"))
+            await self._editor.save_file(name, (await request.body()).decode("utf-8"))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to save {filename}: {e}")
 
@@ -52,15 +52,13 @@ class Router:
         name = Path(filename)
 
         try:
-            self._editor.delete_file(name)
+            await self._editor.delete_file(name)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to delete {filename}: {e}")
 
     async def upload_file(self, filename: str, f: UploadFile):
-        name = Path(filename)
-
         try:
-            self._upload.upload_file(name, f)
+           await self._upload.upload_file(filename, f)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to upload {filename}: {e}")
 

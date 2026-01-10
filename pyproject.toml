@@ -3,11 +3,12 @@ name = "shepherdx"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.13"
 dependencies = [
     "aiomqtt>=2.4.0",
     "asyncio>=4.0.0",
     "fastapi>=0.124.4",
+    "pillow>=12.1.0",
     "python-multipart>=0.0.20",
     "uvicorn>=0.38.0",
 ]
