@@ -18,7 +18,7 @@ class Router:
         self._files_router.add_api_route("/delete/{filename}", self.delete_file, methods=["POST"])
 
         self._upload_router = APIRouter(prefix="/upload")
-        self._upload_router.add_api_route("/file/{filename}", self.upload_file, methods=["POST"], status_code=201)
+        self._upload_router.add_api_route("/file", self.upload_file, methods=["POST"], status_code=201)
         self._upload_router.add_api_route("/team-image", self.upload_team_image, methods=["POST"], status_code=201)
 
     @property
@@ -56,11 +56,11 @@ class Router:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to delete {filename}: {e}")
 
-    async def upload_file(self, filename: str, f: UploadFile):
+    async def upload_file(self, f: UploadFile):
         try:
-           await self._upload.upload_file(filename, f)
+           await self._upload.upload_file(f)
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to upload {filename}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to upload: {e}")
 
     async def upload_team_image(self, f: UploadFile):
         try:

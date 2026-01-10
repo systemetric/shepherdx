@@ -1,5 +1,6 @@
 import shutil
 import zipfile
+import tempfile
 
 from pathlib import Path
 from fastapi import UploadFile
@@ -11,23 +12,29 @@ class Upload:
     def __init__(self):
         self._config = Config()
 
-    async def _process_python(self, target_path: Path, f: UploadFile):
+    async def _process_python(self, f: UploadFile):
         content = await f.read()
-        out_path = self._config.user_src_path / target_path
-
-        with open(out_path, "wb") as f:
+        with open(self._config.user_main_path, "wb") as f:
             f.write(content)
 
-        shutil.copyfile(out_path, self._config.user_main_path)
+    def _process_zip(self, f: UploadFile):
+        tmp_dir = tempfile.mkdtemp(prefix="shepherd_user_code_")
 
-    def _process_zip(self, path: Path, f: UploadFile) :
-        pass
+        with zipfile.ZipFile(f.file, "r") as zip:
+            zip.extractall(tmp_dir)
 
-    async def upload_file(self, name: str, f: UploadFile):
-        if f.content_type.startswith("text") or name.endswith(".py"):
-            await self._process_python(Path(name), f)
+        if not (Path(tmp_dir) / self._config.user_main_name).is_file():
+            raise Exception("Uploaded ZIP file has no entrypoint")
+
+        shutil.rmtree(self._config.user_cur_path, ignore_errors=True)
+        shutil.move(tmp_dir, self._config.user_cur_path)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    async def upload_file(self, f: UploadFile):
+        if f.content_type.startswith("text") or f.filename.endswith(".py"):
+            await self._process_python(f)
         elif "zip" in f.content_type and zipfile.is_zipfile(f.file):
-            self._process_zip(Path(name), f)
+            self._process_zip(f)
         else:
             raise Exception(f"File {f.filename} -> {name} has invalid MIME type {f.content_type}, or invalid ZIP file")
 

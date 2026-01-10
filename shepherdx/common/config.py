@@ -9,7 +9,8 @@ class Config:
 
     user_src_path: Path = Path("user/projects")
     user_cur_path: Path = Path("user/current")
-    user_main_path: Path = user_cur_path / Path("main.py")
+    user_main_name: Path = Path("main.py")
+    user_main_path: Path = user_cur_path / user_main_name
 
     blocks_path: Path = user_src_path / "blocks.json";
 
