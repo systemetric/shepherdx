@@ -9,8 +9,7 @@ from enum import Enum
 class MqttMessage:
     pass
 
-@dataclass
-class ControlMessageType(Enum):
+class ControlMessageType(str, Enum):
     START = "start"
     STOP = "stop"
 
