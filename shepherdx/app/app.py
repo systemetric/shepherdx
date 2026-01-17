@@ -11,7 +11,7 @@ from shepherdx.common.mqtt import ShepherdMqtt
 
 from .router import Router
 
-SHEPHERD_SERVICE_ID = "shepherd";
+SHEPHERD_SERVICE_ID = "shepherd-app";
 
 class ShepherdApp:
     def __init__(self, host: str, port: int):
