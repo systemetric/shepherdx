@@ -1,7 +1,10 @@
+import sys
 import json
+import errno
 import atexit
 import asyncio
 import logging
+import subprocess
 import coloredlogs
 from enum import Enum
 from pathlib import Path
@@ -83,7 +86,7 @@ class ShepherdRunner:
             callback=self._gpio_start, bouncetime=self._config.start_button_bounce_time)
 
     def _setup_hopper(self):
-        self._log_pipe = HopperPipe(HopperPipeType.OUT, "robot", "log")
+        self._log_pipe = HopperPipe(HopperPipeType.IN, "robot", "log")
         self._start_pipe = HopperPipe(HopperPipeType.IN, SHEPHERD_RUN_SERVICE_ID, "start")
         self._log_pipe.open()
         self._start_pipe.open()
@@ -92,6 +95,7 @@ class ShepherdRunner:
         # Hopper locks the pipes when in use, ensure these are released
         self._log_pipe.close()
         self._start_pipe.close()
+        self._kill_usercode()
 
     def _send_start_info(self):
         """ Send start info down the start pipe, to waiting usercode """
@@ -100,6 +104,50 @@ class ShepherdRunner:
             "zone": self._zone,
         })
         self._start_pipe.write(s.encode("utf-8") + b'\n')
+
+    def _start_usercode(self):
+        self._usercode = subprocess.Popen(
+            [
+                sys.executable, "-u", self._config.user_main_path
+            ],
+            stdout = self._log_pipe.fd,
+            stderr = self._log_pipe.fd,
+            bufsize = 1,
+            close_fds = True,
+        )
+
+    async def _stop_usercode(self):
+        """ Stop the usercode, sending SIGKILL if needed """
+        if self._usercode == None:
+            return
+
+        if self._state != State.RUNNING:
+            self.logger.warn(f"Cannot kill usercode, needs RUNNING, got {self._state}")
+            return
+
+        try:
+            self._usercode.terminate()
+        except OSError as e:
+            if e.errno != errno.ESRCH:
+                raise
+
+        if self._usercode.poll() == None:
+            await asyncio.sleep(self._config.kill_delay)
+            self._kill_usercode()
+
+        self._usercode = None
+        self.logger.info("Killed usercode")
+
+    def _kill_usercode(self):
+        """ Kill usercode with SIGKILL """
+        if self._usercode == None:
+            return
+
+        try:
+            self._usercode.kill()
+        except OSError as e:
+            if e.errno != errno.ESRCH:
+                raise
 
     async def _run_loop(self):
         async with ShepherdMqtt(SHEPHERD_RUN_SERVICE_ID) as mqttc:
@@ -141,6 +189,7 @@ class ShepherdRunner:
 
     def _state_ready(self):
         self.logger.info("READY")
+        self._start_usercode()
 
     def _state_running(self):
         self.logger.info("RUNNING")

@@ -12,7 +12,7 @@
 
 - [ ] robot reset (power)
 - [ ] setup usercode
-- [ ] start usercode
+- [x] start usercode
 - [ ] wait for start command -> RUNNING
 
 ## RUNNING state

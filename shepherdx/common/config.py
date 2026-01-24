@@ -27,6 +27,9 @@ class Config:
     start_button_pin: int = 26
     start_button_bounce_time: int = 1000
 
+    round_length: int = 180
+    kill_delay: int = 5
+
     def __init__(self):
         os.makedirs(self.user_cur_path, exist_ok=True)
         os.makedirs(self.tmp_store_path, exist_ok=True)

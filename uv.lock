@@ -153,7 +153,7 @@ wheels = [
 [[package]]
 name = "hopper"
 version = "0.1.0"
-source = { git = "https://github.com/systemetric/hopper.git?rev=hopperx#27d01d1bd1fff9fcb9ff7fa1cd913e9705f57a35" }
+source = { git = "https://github.com/systemetric/hopper.git?rev=hopperx#c124255e303079bd2de49ba63bb6dfbfc9a18c9a" }
 
 [[package]]
 name = "humanfriendly"
