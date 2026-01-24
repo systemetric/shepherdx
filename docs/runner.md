@@ -17,7 +17,7 @@
 
 ## RUNNING state
 
-- [ ] send start info
+- [x] send start info
 - [ ] wait for exit -> POST_RUN
 
 ## POST_RUN state

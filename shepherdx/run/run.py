@@ -1,3 +1,4 @@
+import json
 import atexit
 import asyncio
 import logging
@@ -93,6 +94,14 @@ class ShepherdRunner:
         self._log_pipe.close()
         self._start_pipe.close()
 
+    def _send_start_info(self):
+        """ Send start info down the start pipe, to waiting usercode """
+        s = json.dumps({
+            "mode": self._mode,
+            "zone": self._zone,
+        })
+        self._start_pipe.write(s.encode("utf-8") + b'\n')
+
     async def _run_loop(self):
         async with ShepherdMqtt(SHEPHERD_RUN_SERVICE_ID) as mqttc:
             self._mqttc = mqttc
@@ -133,6 +142,7 @@ class ShepherdRunner:
 
     def _state_running(self):
         self.logger.info("RUNNING")
+        self._send_start_info()
 
     async def _state_post_run(self):
         """ Move usercode back into ready state after running """
