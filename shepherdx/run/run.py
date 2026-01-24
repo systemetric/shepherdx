@@ -1,3 +1,4 @@
+import atexit
 import asyncio
 import logging
 import coloredlogs
@@ -76,10 +77,21 @@ class ShepherdRunner:
         loop.run_until_complete(self._switch_state(State.RUNNING, State.READY))
 
     def _setup_gpio(self):
-        GPIO.set_mode(GPIO.BCM)
+        GPIO.setmode(GPIO.BCM)
         GPIO.setup(self._config.start_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.add_event_detect(self._config.start_button_pin, GPIO.FALLING,
             callback=self._gpio_start, bouncetime=self._config.start_button_bounce_time)
+
+    def _setup_hopper(self):
+        self._log_pipe = HopperPipe(HopperPipeType.OUT, "robot", "log")
+        self._start_pipe = HopperPipe(HopperPipeType.IN, SHEPHERD_RUN_SERVICE_ID, "start")
+        self._log_pipe.open()
+        self._start_pipe.open()
+
+    def _at_exit(self):
+        # Hopper locks the pipes when in use, ensure these are released
+        self._log_pipe.close()
+        self._start_pipe.close()
 
     async def _run_loop(self):
         async with ShepherdMqtt(SHEPHERD_RUN_SERVICE_ID) as mqttc:
@@ -107,6 +119,12 @@ class ShepherdRunner:
 
     async def _state_init(self):
         self.logger.info("INIT")
+
+        self._setup_gpio()
+        self._setup_hopper()
+
+        atexit.register(self._at_exit)
+
         await self._load_start_graphic()
         await self._state_queue.put(State.READY)
 

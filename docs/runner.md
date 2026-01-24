@@ -2,9 +2,9 @@
 
 ## INIT state
 
-- [ ] setup GPIO
+- [x] setup GPIO
 - [x] setup runner MQTT
-- [ ] setup Hopper for client
+- [x] setup Hopper for client
 - [x] load initial image
 - [x] -> READY
 
