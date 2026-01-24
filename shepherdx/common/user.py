@@ -30,3 +30,9 @@ class UserConfig:
         if self.mode not in list(Mode):
             raise ValueError(f"mode '{self.mode}' not valid")
 
+class State(str, Enum):
+    INIT = "init"
+    READY = "ready"
+    RUNNING = "running"
+    POST_RUN = "stopped"
+

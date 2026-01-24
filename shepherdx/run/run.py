@@ -5,8 +5,13 @@ import logging
 import coloredlogs
 from enum import Enum
 from pathlib import Path
-from shepherdx.common import Config, Channels, Mode, Zone
-from shepherdx.common.mqtt import ShepherdMqtt, ControlMessage, ControlMessageType
+from shepherdx.common import Config, Channels, Mode, Zone, State
+from shepherdx.common.mqtt import (
+    ShepherdMqtt,
+    ControlMessage,
+    ControlMessageType,
+    RunStatusMessage
+)
 from hopper import HopperPipeType, HopperPipe
 
 try:
@@ -15,12 +20,6 @@ except Exception:
     import Mock.GPIO as GPIO
 
 SHEPHERD_RUN_SERVICE_ID = "shepherd-run"
-
-class State(str, Enum):
-    INIT = "init"
-    READY = "ready"
-    RUNNING = "running"
-    POST_RUN = "stopped"
 
 class ShepherdRunner:
     def __init__(self):
@@ -122,6 +121,9 @@ class ShepherdRunner:
                 self._state_running()
             elif self._state == State.POST_RUN:
                 await self._state_post_run()
+
+            # publish new state on status channel, could be used to reset clients
+            await self._mqttc.publish(Channels.shepherd_run_status, RunStatusMessage(new_state=self._state))
 
             # This blocks until the next state update is received
             self._state = await self._state_queue.get()
