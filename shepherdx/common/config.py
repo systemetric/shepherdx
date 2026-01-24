@@ -24,6 +24,9 @@ class Config:
 
     arena_usb_path: Path = Path("/media/ArenaUSB")
 
+    start_button_pin: int = 26
+    start_button_bounce_time: int = 1000
+
     def __init__(self):
         os.makedirs(self.user_cur_path, exist_ok=True)
         os.makedirs(self.tmp_store_path, exist_ok=True)

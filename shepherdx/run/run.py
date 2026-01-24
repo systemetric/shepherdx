@@ -5,6 +5,12 @@ from enum import Enum
 from pathlib import Path
 from shepherdx.common import Config, Channels, Mode, Zone
 from shepherdx.common.mqtt import ShepherdMqtt, ControlMessage, ControlMessageType
+from hopper import HopperPipeType, HopperPipe
+
+try:
+    import RPi.GPIO as GPIO
+except Exception:
+    import Mock.GPIO as GPIO
 
 SHEPHERD_RUN_SERVICE_ID = "shepherd-run"
 
@@ -23,7 +29,7 @@ class ShepherdRunner:
         self._state_queue = asyncio.Queue()
 
         self._config = Config()
-        self._set_defaults()
+        self._reset_state()
 
         self._usercode = None
 
@@ -52,6 +58,28 @@ class ShepherdRunner:
             await self._switch_state(State.POST_RUN, State.RUNNING)
         else:
             self.logger.warn(f"Unknown control message type: {msg.type}")
+
+    def _gpio_start(self, _):
+        zone = Zone.RED
+        if (self._config.arena_usb_path / "zone1.txt").exists():
+            zone = Zone.BLUE
+        elif (self._config.arena_usb_path / "zone2.txt").exists():
+            zone = Zone.GREEN
+        elif (self._config.arena_usb_path / "zone3.txt").exists():
+            zone = Zone.YELLOW
+
+        self._mode = Mode.COMP
+        self._zone = zone
+
+        # this does block, but it shouldn't matter (also gpio is not async)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self._switch_state(State.RUNNING, State.READY))
+
+    def _setup_gpio(self):
+        GPIO.set_mode(GPIO.BCM)
+        GPIO.setup(self._config.start_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.add_event_detect(self._config.start_button_pin, GPIO.FALLING,
+            callback=self._gpio_start, bouncetime=self._config.start_button_bounce_time)
 
     async def _run_loop(self):
         async with ShepherdMqtt(SHEPHERD_RUN_SERVICE_ID) as mqttc:
