@@ -11,14 +11,14 @@
 ## READY state
 
 - [ ] robot reset (power)
-- [ ] setup usercode
+- [x] setup usercode
 - [x] start usercode
-- [ ] wait for start command -> RUNNING
+- [x] wait for start command -> RUNNING
 
 ## RUNNING state
 
 - [x] send start info
-- [ ] wait for exit -> POST_RUN
+- [x] wait for exit -> POST_RUN
 
 ## POST_RUN state
 

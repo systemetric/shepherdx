@@ -6,16 +6,23 @@ import asyncio
 import logging
 import subprocess
 import coloredlogs
+from typing import Optional
 from enum import Enum
 from pathlib import Path
-from shepherdx.common import Config, Channels, Mode, Zone, State
+from hopper import HopperPipeType, HopperPipe
+from shepherdx.common import (
+    Config,
+    Channels,
+    Mode,
+    Zone,
+    State,
+)
 from shepherdx.common.mqtt import (
     ShepherdMqtt,
     ControlMessage,
     ControlMessageType,
-    RunStatusMessage
+    RunStatusMessage,
 )
-from hopper import HopperPipeType, HopperPipe
 
 try:
     import RPi.GPIO as GPIO
@@ -36,6 +43,8 @@ class ShepherdRunner:
         self._reset_state()
 
         self._usercode = None
+        self._user_wait_thread = None
+        self._user_timer_thread = None
 
     def run(self):
         asyncio.run(self._run_loop())
@@ -53,13 +62,34 @@ class ShepherdRunner:
         self.logger.info(f"Switching to {new_state}")
         await self._state_queue.put(new_state)
 
+    def _switch_state_sync(self, new_state, old_state):
+        """ Switch to new_state from old_state, checking old_state first, synchronous """
+        if self._state != old_state:
+            self.logger.warn(f"Cannot switch to {new_state}, needs {old_state}, got {self._state}")
+            return
+
+        self.logger.info(f"Switching to {new_state}")
+        self._state_queue.put_nowait(new_state)
+
+    def _switch_state_user_exit(self):
+        """ Switch state out of either RUNNING or POST_RUN for usercode exit """
+        if self._state == State.RUNNING:
+            self._switch_state_sync(State.POST_RUN, State.RUNNING)
+        elif self._state == State.POST_RUN:
+            # already exited, ignore
+            pass
+        else:
+            self.logger.warn(f"Cannot switch to POST_RUN, needs RUNNING, got {self._state}")
+
     async def _handle_control(self, msg: ControlMessage):
         if msg.type == ControlMessageType.START:
             self._mode = msg.mode
             self._zone = msg.zone
             await self._switch_state(State.RUNNING, State.READY)
         elif msg.type == ControlMessageType.STOP:
-            await self._switch_state(State.POST_RUN, State.RUNNING)
+            # transition to POST_RUN in READY or RUNNING state
+            await self._switch_state(State.POST_RUN,
+                self._state if self._state == State.READY or self._state == State.RUNNING else State.RUNNING)
         else:
             self.logger.warn(f"Unknown control message type: {msg.type}")
 
@@ -95,6 +125,12 @@ class ShepherdRunner:
         # Hopper locks the pipes when in use, ensure these are released
         self._log_pipe.close()
         self._start_pipe.close()
+
+        if self._user_wait_thread:
+            self._user_wait_thread.cancel("")
+        if self._user_timer_thread:
+            self._user_timer_thread.cancel("")
+
         self._kill_usercode()
 
     def _send_start_info(self):
@@ -105,7 +141,30 @@ class ShepherdRunner:
         })
         self._start_pipe.write(s.encode("utf-8") + b'\n')
 
-    def _start_usercode(self):
+    def _wait_usercode(self, loop: asyncio.AbstractEventLoop, timeout: Optional[float]):
+        """ Wait for usercode to exit, and safely transition to POST_RUN, optional timeout """
+        if self._usercode == None:
+            return
+
+        try:
+            self._usercode.wait(timeout)
+        except subprocess.TimeoutExpired:
+            pass
+
+        if timeout:
+            self.logger.debug(f"EXPIRE: {timeout}")
+        loop.call_soon_threadsafe(self._switch_state_user_exit)
+
+    def _set_usercode_timer(self):
+        timeout = self._config.round_length if self._mode == Mode.COMP else None
+        if timeout == None:
+            return
+
+        self.logger.debug(f"TIMEOUT: {timeout}")
+        loop = asyncio.get_running_loop()
+        self._user_timer_thread = asyncio.create_task(asyncio.to_thread(self._wait_usercode, loop, timeout))
+
+    async def _start_usercode(self):
         self._usercode = subprocess.Popen(
             [
                 sys.executable, "-u", self._config.user_main_path
@@ -116,13 +175,22 @@ class ShepherdRunner:
             close_fds = True,
         )
 
+        loop = asyncio.get_running_loop()
+        self._user_wait_thread = asyncio.create_task(asyncio.to_thread(self._wait_usercode, loop, None))
+
     async def _stop_usercode(self):
         """ Stop the usercode, sending SIGKILL if needed """
         if self._usercode == None:
             return
 
-        if self._state != State.RUNNING:
-            self.logger.warn(f"Cannot kill usercode, needs RUNNING, got {self._state}")
+        if self._user_wait_thread:
+            self._user_wait_thread.cancel("")
+
+        if self._user_timer_thread:
+            self._user_timer_thread.cancel("")
+
+        if self._state != State.RUNNING and self._state != State.POST_RUN:
+            self.logger.warn(f"Cannot kill usercode, needs RUNNING or POST_RUN, got {self._state}")
             return
 
         try:
@@ -160,23 +228,25 @@ class ShepherdRunner:
                 pass
 
     async def _dispatch_state(self):
+        """ Dispatch state transitions forever """
         while True:
+            # publish new state on status channel, could be used to reset clients
+            await self._mqttc.publish(Channels.shepherd_run_status, RunStatusMessage(new_state=self._state))
+
             if self._state == State.INIT:
                 await self._state_init()
             elif self._state == State.READY:
-                self._state_ready()
+                await self._state_ready()
             elif self._state == State.RUNNING:
                 self._state_running()
             elif self._state == State.POST_RUN:
                 await self._state_post_run()
 
-            # publish new state on status channel, could be used to reset clients
-            await self._mqttc.publish(Channels.shepherd_run_status, RunStatusMessage(new_state=self._state))
-
             # This blocks until the next state update is received
             self._state = await self._state_queue.get()
 
     async def _state_init(self):
+        """ Initialize the runner, this only happens once """
         self.logger.info("INIT")
 
         self._setup_gpio()
@@ -187,21 +257,26 @@ class ShepherdRunner:
         await self._load_start_graphic()
         await self._state_queue.put(State.READY)
 
-    def _state_ready(self):
+    async def _state_ready(self):
+        """ Start the usercode, until it blocks for start info """
         self.logger.info("READY")
-        self._start_usercode()
+        await self._start_usercode()
 
     def _state_running(self):
+        """ Send start info to usercode when transitioning """
         self.logger.info("RUNNING")
         self._send_start_info()
+        self._set_usercode_timer()
 
     async def _state_post_run(self):
         """ Move usercode back into ready state after running """
         self.logger.info("POST_RUN")
+        await self._stop_usercode()
         self._reset_state()
         await self._state_queue.put(State.READY)
 
     async def _load_start_graphic(self):
+        """ Copy an image to the temporary initial image location """
         tmp_graphic = self._config.tmp_graphic
         start_graphic = self._config.team_logo_path
         if not start_graphic.exists():
