@@ -68,7 +68,7 @@ class ShepherdRunner:
         else:
             self.logger.warn(f"Cannot switch to POST_RUN, needs > INIT, got {self._state}")
 
-    async def _handle_control(self, msg: ControlMessage):
+    async def _handle_control(self, topic: str, msg: ControlMessage):
         if msg.type == ControlMessageType.START:
             self._mode = msg.mode
             self._zone = msg.zone
