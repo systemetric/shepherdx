@@ -21,7 +21,7 @@ class Router:
         self._files_router.add_api_route("/list", self.get_files, methods=["GET"])
         self._files_router.add_api_route("/load/{filename}", self.load_file, methods=["GET"])
         self._files_router.add_api_route("/save/{filename}", self.save_file, methods=["POST"])
-        self._files_router.add_api_route("/delete/{filename}", self.delete_file, methods=["POST"])
+        self._files_router.add_api_route("/delete/{filename}", self.delete_file, methods=["DELETE"])
 
         self._upload_router = APIRouter(prefix="/upload")
         self._upload_router.add_api_route("/file", self.upload_file, methods=["POST"], status_code=201)
