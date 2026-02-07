@@ -19,12 +19,12 @@ class ShepherdApp:
 
         self._host = host
         self._port = port
-        self._app = FastAPI(lifespan=self._init_mqtt)
+        self._app = FastAPI(lifespan=self._init_mqtt, docs_url=None, redoc_url=None, openapi_url=None)
         self._router = Router(self.get_mqtt_client)
 
         self._app.mount("/editor", StaticFiles(directory=self._config.editor_path, html=True), name="editor")
         self._app.mount("/docs", StaticFiles(directory=self._config.docs_path, html=True), name="docs")
-        self._app.mount("/static", StaticFiles(directory=self._config.static_path, html=True), name="static")
+        self._app.mount("/", StaticFiles(directory=self._config.static_path, html=True), name="static")
 
         self._app.include_router(self._router.files_router)
         self._app.include_router(self._router.upload_router)
