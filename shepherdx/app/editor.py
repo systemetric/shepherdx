@@ -43,7 +43,7 @@ class Editor:
 
         return {
             "blocks": blocks,
-            "projects": projects,
+            "files": projects,
         }
 
     async def load_file(self, name: Path) -> dict:
