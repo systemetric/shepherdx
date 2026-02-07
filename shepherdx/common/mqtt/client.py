@@ -2,7 +2,7 @@ import asyncio
 import aiomqtt
 import json
 
-from aiomqtt import Client, Will
+from aiomqtt import Client, Will, Topic
 from dataclasses import asdict
 from typing import Type, Callable, Optional
 from .messages import MqttMessage
@@ -32,11 +32,22 @@ class ShepherdMqtt:
             else:
                 raise e
 
+    def _get_topic_subs(self, topic):
+        subs = []
+        topic = Topic(value=topic)
+
+        for sub in self._subs.keys():
+            if topic.matches(sub):
+                subs.append(sub)
+
+        return subs
+
     async def loop(self):
         async for msg in self._mqttc.messages:
             topic = msg.topic.value
-            if topic in self._subs:
-                callback, cls = self._subs[topic]
+
+            for sub in self._get_topic_subs(topic):
+                callback, cls = self._subs[sub]
 
                 if cls == None:
                     await callback(msg.payload)
