@@ -37,7 +37,7 @@ Example response:
     ],
     "footer": ""
   },
-  "projects": [
+  "files": [
     "blocks.json",
     "me.py",
     "new_project.py",
@@ -81,7 +81,7 @@ must be UTF-8 encoded.
 
 ### `/files/delete/{filename}`
 
-- Methods: `POST`
+- Methods: `DELETE`
 
 Delete a file specified by `filename`.
 

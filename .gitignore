@@ -14,6 +14,10 @@ user/projects/
 user/current/
 user/team_logo.jpg
 
+# Docs + Sheep static files
+static/docs/
+static/editor/
+
 # Testing files
 test.png
 test.py
