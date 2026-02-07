@@ -1,4 +1,7 @@
 import asyncio
+import logging
+import websockets
+import coloredlogs
 from websockets import serve
 from shepherdx.common.mqtt import ShepherdMqtt
 
@@ -6,9 +9,13 @@ SHEPHERD_WS_SERVICE_ID = "shepherd-ws"
 
 class ShepherdWebSockets:
     def __init__(self):
-        self._conns = []
+        self.logger = logging.getLogger(SHEPHERD_WS_SERVICE_ID)
+        coloredlogs.install(level="DEBUG", logger=self.logger)
+
+        self._conns = {}
 
     def run(self):
+        self.logger.info("Started Shepherd WS server")
         asyncio.run(self._loop())
 
     async def _loop(self):
@@ -24,9 +31,54 @@ class ShepherdWebSockets:
                     pass
 
     async def _mqtt_callback(self, topic, payload):
-        print(f"TOPIC: {topic}, MESSAGE: {payload}")
+        if topic in self._conns.keys():
+            ws = self._collect_ws(topic)
+            websockets.broadcast(ws, payload)
+            self.logger.info(f"{topic} <- {len(payload)} bytes")
+
+    # collect websockets by topic for broadcast
+    def _collect_ws(self, topic):
+        if topic not in self._conns:
+            return []
+
+        final_ws = []
+        for id, ws in self._conns[topic]:
+            final_ws.append(ws)
+
+        return final_ws
+
+    def _add_websocket(self, topic, websocket):
+        if topic not in self._conns:
+            self._conns[topic] = list([])
+
+        self._conns[topic].append((websocket.id, websocket))
+
+        self.logger.info(f"Added {websocket.id} for {topic}")
+
+    def _remove_websocket(self, topic, websocket):
+        if topic not in self._conns:
+            return
+
+        removed = False
+
+        # filter connections list, remove matching ids
+        new_conns = []
+        for id, ws in self._conns[topic]:
+            if id == websocket.id:
+                removed = True
+            else:
+                new_conns.append((id, ws))
+        self._conns[topic] = new_conns
+
+        if removed:
+            self.logger.info(f"Removed {websocket.id} from {topic}")
 
     async def _conn_handler(self, websocket):
         path = websocket.request.path[1::]
-        print(f"CHANNEL: {path}")
+        self._add_websocket(path, websocket)
+
+        try:
+            await websocket.wait_closed()
+        finally:
+            self._remove_websocket(path, websocket)
 
