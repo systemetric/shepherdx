@@ -50,12 +50,12 @@ class ShepherdMqtt:
                 callback, cls = self._subs[sub]
 
                 if cls == None:
-                    await callback(msg.payload)
+                    await callback(topic, msg.payload)
                 else:
                     payload = json.loads(msg.payload.decode())
-                    await callback(cls(**payload))
+                    await callback(topic, cls(**payload))
 
-    async def subscribe(self, topic: str, callback: Callable[[MqttMessage], asyncio.Future], msg_type: Optional[Type[MqttMessage]]):
+    async def subscribe(self, topic: str, callback: Callable[[str, MqttMessage], asyncio.Future], msg_type: Optional[Type[MqttMessage]]):
         self._subs[topic] = (callback, msg_type)
         await self._mqttc.subscribe(topic)
 
