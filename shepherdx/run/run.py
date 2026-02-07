@@ -9,7 +9,6 @@ import coloredlogs
 from typing import Optional
 from enum import Enum
 from pathlib import Path
-from hopper import HopperPipeType, HopperPipe
 from shepherdx.common import (
     Config,
     Channels,
@@ -62,24 +61,12 @@ class ShepherdRunner:
         self.logger.info(f"Switching to {new_state}")
         await self._state_queue.put(new_state)
 
-    def _switch_state_sync(self, new_state, old_state):
-        """ Switch to new_state from old_state, checking old_state first, synchronous """
-        if self._state != old_state:
-            self.logger.warn(f"Cannot switch to {new_state}, needs {old_state}, got {self._state}")
-            return
-
-        self.logger.info(f"Switching to {new_state}")
-        self._state_queue.put_nowait(new_state)
-
     def _switch_state_user_exit(self):
-        """ Switch state out of either RUNNING or POST_RUN for usercode exit """
-        if self._state == State.RUNNING:
-            self._switch_state_sync(State.POST_RUN, State.RUNNING)
-        elif self._state == State.POST_RUN:
-            # already exited, ignore
-            pass
+        """ Switch state into POST_RUN, ignore current state unless INIT """
+        if self._state != State.INIT:
+            self._state_queue.put_nowait(State.POST_RUN)
         else:
-            self.logger.warn(f"Cannot switch to POST_RUN, needs RUNNING, got {self._state}")
+            self.logger.warn(f"Cannot switch to POST_RUN, needs > INIT, got {self._state}")
 
     async def _handle_control(self, msg: ControlMessage):
         if msg.type == ControlMessageType.START:
@@ -115,17 +102,7 @@ class ShepherdRunner:
         GPIO.add_event_detect(self._config.start_button_pin, GPIO.FALLING,
             callback=self._gpio_start, bouncetime=self._config.start_button_bounce_time)
 
-    def _setup_hopper(self):
-        self._log_pipe = HopperPipe(HopperPipeType.IN, "robot", "log")
-        self._start_pipe = HopperPipe(HopperPipeType.IN, SHEPHERD_RUN_SERVICE_ID, "start")
-        self._log_pipe.open()
-        self._start_pipe.open()
-
     def _at_exit(self):
-        # Hopper locks the pipes when in use, ensure these are released
-        self._log_pipe.close()
-        self._start_pipe.close()
-
         if self._user_wait_thread:
             self._user_wait_thread.cancel("")
         if self._user_timer_thread:
