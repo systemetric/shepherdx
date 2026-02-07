@@ -4,19 +4,13 @@ from enum import Enum
 from dataclasses import dataclass, fields
 from typing import Optional
 
-class Zone(str, Enum):
-    RED = "red"
-    BLUE = "blue"
-    GREEN = "green"
-    YELLOW = "yellow"
-
 class Mode(str, Enum):
     DEV = "dev"
     COMP = "comp"
 
 @dataclass
 class UserConfig:
-    zone: Zone = Zone.RED
+    zone: int = 0
     mode: Mode = Mode.DEV
 
     def __post_init__(self):
@@ -25,7 +19,7 @@ class UserConfig:
             if not isinstance(field.default, dataclasses._MISSING_TYPE) and getattr(self, field.name) is None:
                 setattr(self, field.name, field.default)
 
-        if self.zone not in list(Zone):
+        if self.zone < 0 or self.zone > 3:
             raise ValueError(f"zone '{self.zone}' not valid")
         if self.mode not in list(Mode):
             raise ValueError(f"mode '{self.mode}' not valid")

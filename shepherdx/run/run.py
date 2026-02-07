@@ -13,7 +13,6 @@ from shepherdx.common import (
     Config,
     Channels,
     Mode,
-    Zone,
     State,
 )
 from shepherdx.common.mqtt import (
@@ -50,7 +49,7 @@ class ShepherdRunner:
 
     def _reset_state(self):
         self._mode = Mode.DEV
-        self._zone = Zone.RED
+        self._zone = 0
 
     async def _switch_state(self, new_state, old_state):
         """ Switch to new_state from old_state, checking old_state first """
@@ -81,13 +80,13 @@ class ShepherdRunner:
             self.logger.warn(f"Unknown control message type: {msg.type}")
 
     def _gpio_start(self, _):
-        zone = Zone.RED
+        zone = 0
         if (self._config.arena_usb_path / "zone1.txt").exists():
-            zone = Zone.BLUE
+            zone = 1
         elif (self._config.arena_usb_path / "zone2.txt").exists():
-            zone = Zone.GREEN
+            zone = 2
         elif (self._config.arena_usb_path / "zone3.txt").exists():
-            zone = Zone.YELLOW
+            zone = 3
 
         self._mode = Mode.COMP
         self._zone = zone

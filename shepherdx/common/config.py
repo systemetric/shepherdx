@@ -1,7 +1,6 @@
 import os
 
 from pathlib import Path
-from .user import Mode, Zone
 
 class Config:
     static_path: Path = Path("static/").absolute()

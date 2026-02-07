@@ -1,6 +1,6 @@
 # This file defines message subclasses for MQTT communication
 
-from shepherdx.common.user import Zone, Mode, State
+from shepherdx.common.user import Mode, State
 
 from dataclasses import dataclass
 from enum import Enum
@@ -17,7 +17,7 @@ class ControlMessageType(str, Enum):
 class ControlMessage(MqttMessage):
     type: ControlMessageType
     mode: Mode | None
-    zone: Zone | None
+    zone: int | None
 
 @dataclass
 class RunStatusMessage(MqttMessage):

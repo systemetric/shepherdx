@@ -3,6 +3,7 @@ import logging
 import websockets
 import coloredlogs
 from websockets import serve
+from shepherdx.common import Config
 from shepherdx.common.mqtt import ShepherdMqtt
 
 SHEPHERD_WS_SERVICE_ID = "shepherd-ws"
@@ -13,6 +14,7 @@ class ShepherdWebSockets:
         coloredlogs.install(level="DEBUG", logger=self.logger)
 
         self._conns = {}
+        self._config = Config()
 
     def run(self):
         self.logger.info("Started Shepherd WS server")

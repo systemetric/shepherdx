@@ -1,10 +1,10 @@
-from shepherdx.common import Config, UserConfig, Channels, Zone, Mode
+from shepherdx.common import Config, UserConfig, Channels, Mode
 from shepherdx.common.mqtt import ControlMessage, ControlMessageType
 
 class Control:
     def __init__(self):
         self._config = Config()
-        self._user_config = UserConfig(zone=Zone.RED, mode=Mode.DEV)
+        self._user_config = UserConfig(zone=0, mode=Mode.DEV)
 
     def set_user_config(self, config: UserConfig):
         self._user_config = config
