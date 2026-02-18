@@ -168,6 +168,11 @@ wheels = [
 ]
 
 [[package]]
+name = "hopper"
+version = "0.1.0"
+source = { git = "https://github.com/systemetric/hopper#a24294648fe6e9529a3de5ca8efb90d845b464f5" }
+
+[[package]]
 name = "humanfriendly"
 version = "10.0"
 source = { registry = "https://pypi.org/simple" }
@@ -687,6 +692,7 @@ dependencies = [
     { name = "asyncio" },
     { name = "coloredlogs" },
     { name = "fastapi" },
+    { name = "hopper" },
     { name = "mock-gpio" },
     { name = "pillow" },
     { name = "pydantic" },
@@ -708,6 +714,7 @@ requires-dist = [
     { name = "asyncio", specifier = ">=4.0.0" },
     { name = "coloredlogs", specifier = ">=15.0.1" },
     { name = "fastapi", specifier = ">=0.124.4" },
+    { name = "hopper", git = "https://github.com/systemetric/hopper" },
     { name = "mock-gpio", specifier = ">=0.1.10" },
     { name = "pillow", specifier = ">=12.1.0" },
     { name = "pydantic", specifier = ">=2.12.5" },

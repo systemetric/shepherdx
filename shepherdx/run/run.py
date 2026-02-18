@@ -22,6 +22,7 @@ from shepherdx.common.mqtt import (
     ControlMessageType,
     RunStatusMessage,
 )
+from hopper import HopperPipe, HopperPipeType
 
 try:
     import RPi.GPIO as GPIO
@@ -44,6 +45,9 @@ class ShepherdRunner:
         self._usercode = None
         self._user_wait_thread = None
         self._user_timer_thread = None
+
+        self._start_pipe = HopperPipe(HopperPipeType.IN, SHEPHERD_RUN_SERVICE_ID, Channels.robot_control)
+        self._start_pipe.open()
 
     def run(self):
         asyncio.run(self._run_loop())
@@ -109,6 +113,7 @@ class ShepherdRunner:
         if self._user_timer_thread:
             self._user_timer_thread.cancel("")
 
+        self._start_pipe.close()
         self._kill_usercode()
         robot.reset.reset()
 
