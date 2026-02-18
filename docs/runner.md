@@ -10,7 +10,7 @@
 
 ## READY state
 
-- [ ] robot reset (power)
+- [x] robot reset (power)
 - [x] setup usercode
 - [x] start usercode
 - [x] wait for start command -> RUNNING

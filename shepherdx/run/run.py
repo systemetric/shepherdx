@@ -6,6 +6,7 @@ import asyncio
 import logging
 import subprocess
 import coloredlogs
+import robot.reset
 from typing import Optional
 from enum import Enum
 from pathlib import Path
@@ -50,6 +51,7 @@ class ShepherdRunner:
     def _reset_state(self):
         self._mode = Mode.DEV
         self._zone = 0
+        robot.reset.reset()
 
     async def _switch_state(self, new_state, old_state):
         """ Switch to new_state from old_state, checking old_state first """
@@ -108,6 +110,7 @@ class ShepherdRunner:
             self._user_timer_thread.cancel("")
 
         self._kill_usercode()
+        robot.reset.reset()
 
     def _send_start_info(self):
         """ Send start info down the start pipe, to waiting usercode """

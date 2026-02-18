@@ -13,6 +13,7 @@ dependencies = [
     "pillow>=12.1.0",
     "pydantic>=2.12.5",
     "python-multipart>=0.0.20",
+    "robot",
     "uvicorn>=0.38.0",
     "websockets>=16.0",
 ]
@@ -22,3 +23,6 @@ dev = [
     "mypy>=1.19.1",
     "python-lsp-server>=1.14.0",
 ]
+
+[tool.uv.sources]
+robot = { git = "https://github.com/systemetric/robot", rev = "new-shepherd" }
