@@ -8,6 +8,12 @@ class Mode(str, Enum):
     DEV = "dev"
     COMP = "comp"
 
+class State(str, Enum):
+    INIT = "init"
+    READY = "ready"
+    RUNNING = "running"
+    POST_RUN = "stopped"
+
 @dataclass
 class UserConfig:
     zone: int = 0
@@ -23,10 +29,4 @@ class UserConfig:
             raise ValueError(f"zone '{self.zone}' not valid")
         if self.mode not in list(Mode):
             raise ValueError(f"mode '{self.mode}' not valid")
-
-class State(str, Enum):
-    INIT = "init"
-    READY = "ready"
-    RUNNING = "running"
-    POST_RUN = "stopped"
 

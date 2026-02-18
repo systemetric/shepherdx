@@ -19,7 +19,6 @@ class Config:
 
     tmp_store_path: Path = Path("/run/user/1000/shepherd")
     tmp_graphic: Path = tmp_store_path / "image.jpg"
-    tmp_log: Path = tmp_store_path / "log.txt"
 
     arena_usb_path: Path = Path("/media/ArenaUSB")
 

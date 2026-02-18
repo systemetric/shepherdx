@@ -1,9 +1,12 @@
+import os
+import json
+import base64
 import asyncio
 import logging
 import websockets
 import coloredlogs
 from websockets import serve
-from shepherdx.common import Config
+from shepherdx.common import Config, Channels, State
 from shepherdx.common.mqtt import ShepherdMqtt
 
 SHEPHERD_WS_SERVICE_ID = "shepherd-ws"
@@ -15,6 +18,15 @@ class ShepherdWebSockets:
 
         self._conns = {}
         self._config = Config()
+
+        if os.path.exists(self._config.tmp_graphic):
+            with open(self._config.tmp_graphic, "rb") as f:
+                fb = f.read()
+                self._current_image = base64.b64encode(fb).decode() + "\n";
+        else:
+            self._current_image = None
+        self._next_image = None
+        self._logs = ""
 
     def run(self):
         self.logger.info("Started Shepherd WS server")
@@ -33,6 +45,14 @@ class ShepherdWebSockets:
                     pass
 
     async def _mqtt_callback(self, topic, payload):
+        if topic == Channels.shepherd_run_status:
+            msg = json.loads(payload.decode())
+            if str(msg["new_status"]) == State.POST_RUN.value:
+                self._logs = ""
+                self.logger.info("Cleared log buffer")
+        if topic == Channels.robot_log:
+            self._logs += payload.decode()
+
         if topic in self._conns.keys():
             ws = self._collect_ws(topic)
             websockets.broadcast(ws, payload)
@@ -49,13 +69,19 @@ class ShepherdWebSockets:
 
         return final_ws
 
-    def _add_websocket(self, topic, websocket):
+    async def _add_websocket(self, topic, websocket):
         if topic not in self._conns:
             self._conns[topic] = list([])
 
         self._conns[topic].append((websocket.id, websocket))
-
         self.logger.info(f"Added {websocket.id} for {topic}")
+
+        if topic == Channels.camera and self._current_image is not None:
+            await websocket.send(self._current_image)
+            self.logger.info(f"Sent image to {websocket.id}")
+        elif topic == Channels.robot_log:
+            await websocket.send(self._logs)
+            self.logger.info(f"Sent logs to {websocket.id}")
 
     def _remove_websocket(self, topic, websocket):
         if topic not in self._conns:
@@ -77,7 +103,7 @@ class ShepherdWebSockets:
 
     async def _conn_handler(self, websocket):
         path = websocket.request.path[1::]
-        self._add_websocket(path, websocket)
+        await self._add_websocket(path, websocket)
 
         try:
             await websocket.wait_closed()
