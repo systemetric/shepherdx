@@ -1,8 +1,8 @@
 # Shepherd HTTP API Reference
 
 This document describes the layout of the Shepherd HTTP API, which is used
-primarily by Sheep. For the WebSocket and MQTT API, please refer to other
-documentation (ref docs when they exist).
+primarily by Sheep. For the WebSocket API, see [this page](./ws.md), for the
+MQTT API, please refer to other documentation (ref docs when they exist).
 
 It can be broken down into 3 different areas:
 
