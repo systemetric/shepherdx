@@ -1,4 +1,3 @@
-import json
 import uvicorn
 import asyncio
 
@@ -32,8 +31,7 @@ class ShepherdApp:
         self._app.include_router(self._router.control_router)
 
     async def _init_mqtt(self, app: FastAPI):
-        will = json.dumps(Will(msg=""))
-        async with ShepherdMqtt(SHEPHERD_SERVICE_ID) as client:
+        async with ShepherdMqtt(SHEPHERD_SERVICE_ID, will=Will(msg="")) as client:
             self._mqtt_client = client
             yield
 

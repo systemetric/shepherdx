@@ -79,8 +79,7 @@ class ShepherdWebSockets:
 
     async def _loop(self):
         async with serve(self._conn_handler, "0.0.0.0", 5001) as server:
-            will = json.dumps(Will(msg=""))
-            async with ShepherdMqtt(SHEPHERD_WS_SERVICE_ID, will=will) as mqttc:
+            async with ShepherdMqtt(SHEPHERD_WS_SERVICE_ID, will=Will(msg="")) as mqttc:
                 await mqttc.subscribe("#", self._mqtt_callback, None)
 
                 # forever broadcast new images from hopper

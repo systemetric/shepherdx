@@ -8,8 +8,13 @@ from typing import Type, Callable, Optional
 from .messages import MqttMessage
 
 class ShepherdMqtt:
-    def __init__(self, service, will = ""):
-        self._mqttc = Client("localhost", will=Will(topic=f"{service}/status", payload=will))
+    def __init__(self, service, will = MqttMessage | None):
+        if will != None:
+            _will = json.dumps(asdict(will))
+        else:
+            _will = None
+
+        self._mqttc = Client("localhost", will=Will(topic=f"{service}/status", payload=_will))
         self._subs = {}
         self._task = asyncio.create_task(self._loop_wrapper())
 

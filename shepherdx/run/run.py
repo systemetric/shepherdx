@@ -204,8 +204,7 @@ class ShepherdRunner:
                 raise
 
     async def _run_loop(self):
-        will = json.dumps(Will(msg=""))
-        async with ShepherdMqtt(SHEPHERD_RUN_SERVICE_ID, will=will) as mqttc:
+        async with ShepherdMqtt(SHEPHERD_RUN_SERVICE_ID, will=Will(msg="")) as mqttc:
             self._mqttc = mqttc
             await mqttc.subscribe(Channels.shepherd_run_control, self._handle_control, ControlMessage)
 
