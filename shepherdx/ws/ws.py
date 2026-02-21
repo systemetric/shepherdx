@@ -9,7 +9,7 @@ import websockets
 import coloredlogs
 from websockets import serve
 from shepherdx.common import Config, Channels, State
-from shepherdx.common.mqtt import ShepherdMqtt
+from shepherdx.common.mqtt import ShepherdMqtt, Will
 from hopper import HopperPipe, HopperPipeType
 
 BUF_SIZE = 65536
@@ -79,7 +79,8 @@ class ShepherdWebSockets:
 
     async def _loop(self):
         async with serve(self._conn_handler, "0.0.0.0", 5001) as server:
-            async with ShepherdMqtt(SHEPHERD_WS_SERVICE_ID) as mqttc:
+            will = json.dumps(Will(msg=""))
+            async with ShepherdMqtt(SHEPHERD_WS_SERVICE_ID, will=will) as mqttc:
                 await mqttc.subscribe("#", self._mqtt_callback, None)
 
                 # forever broadcast new images from hopper
@@ -91,7 +92,7 @@ class ShepherdWebSockets:
     async def _mqtt_callback(self, topic, payload):
         if topic == Channels.shepherd_run_status:
             msg = json.loads(payload.decode())
-            if str(msg["new_status"]) == State.POST_RUN.value:
+            if str(msg["new_status"]) == State.READY.value:
                 self._logs = ""
                 self.logger.info("Cleared log buffer")
         if topic == Channels.robot_log:

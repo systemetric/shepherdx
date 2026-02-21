@@ -20,7 +20,8 @@ from shepherdx.common.mqtt import (
     ShepherdMqtt,
     ControlMessage,
     ControlMessageType,
-    RunStatusMessage,
+    RobotStatusMessage,
+    Will,
 )
 from hopper import HopperPipe, HopperPipeType
 
@@ -203,7 +204,8 @@ class ShepherdRunner:
                 raise
 
     async def _run_loop(self):
-        async with ShepherdMqtt(SHEPHERD_RUN_SERVICE_ID) as mqttc:
+        will = json.dumps(Will(msg=""))
+        async with ShepherdMqtt(SHEPHERD_RUN_SERVICE_ID, will=will) as mqttc:
             self._mqttc = mqttc
             await mqttc.subscribe(Channels.shepherd_run_control, self._handle_control, ControlMessage)
 
@@ -216,7 +218,7 @@ class ShepherdRunner:
         """ Dispatch state transitions forever """
         while True:
             # publish new state on status channel, could be used to reset clients
-            await self._mqttc.publish(Channels.shepherd_run_status, RunStatusMessage(new_state=self._state))
+            await self._mqttc.publish(Channels.robot_status, RobotStatusMessage(new_state=self._state))
 
             if self._state == State.INIT:
                 await self._state_init()

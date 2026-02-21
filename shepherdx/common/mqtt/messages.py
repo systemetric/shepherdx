@@ -20,6 +20,10 @@ class ControlMessage(MqttMessage):
     zone: int | None
 
 @dataclass
-class RunStatusMessage(MqttMessage):
+class RobotStatusMessage(MqttMessage):
     new_state: State
+
+@dataclass
+class Will(MqttMessage):
+    msg: str
 

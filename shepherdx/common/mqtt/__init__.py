@@ -1,6 +1,6 @@
 from .client import ShepherdMqtt
 from .messages import MqttMessage
-from .messages import ControlMessage, ControlMessageType, RunStatusMessage
+from .messages import ControlMessage, ControlMessageType, RobotStatusMessage, Will
 
 __all__ = [
     "ShepherdMqtt",
@@ -8,4 +8,5 @@ __all__ = [
     "ControlMessage",
     "ControlMessageType",
     "RunStatusMessage",
+    "Will",
 ]
