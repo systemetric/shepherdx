@@ -38,7 +38,8 @@ class ShepherdWebSockets:
 
         atexit.register(self._at_exit)
 
-        self._camera_pipe = HopperPipe(HopperPipeType.OUT, SHEPHERD_WS_SERVICE_ID, Channels.camera)
+        self._camera_pipe = HopperPipe(HopperPipeType.OUT, SHEPHERD_WS_SERVICE_ID,
+            Channels.camera, hopper=self._config.hopper_path)
         self._camera_pipe.open()
 
         self._image_thread = threading.Thread(target=self._load_images)

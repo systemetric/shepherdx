@@ -46,7 +46,8 @@ class ShepherdRunner:
         self._user_wait_thread = None
         self._user_timer_thread = None
 
-        self._start_pipe = HopperPipe(HopperPipeType.IN, SHEPHERD_RUN_SERVICE_ID, Channels.robot_control)
+        self._start_pipe = HopperPipe(HopperPipeType.IN, SHEPHERD_RUN_SERVICE_ID,
+            Channels.robot_control, hopper=self._config.hopper_path)
         self._start_pipe.open()
 
     def run(self):

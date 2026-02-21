@@ -17,6 +17,7 @@ class Config:
     team_logo_path: Path = Path("user/team_logo.jpg");
     game_logo_path: Path = Path("user/game_logo.jpg");
 
+    hopper_path: Path = Path("/run/user/1000/hopper")
     tmp_store_path: Path = Path("/run/user/1000/shepherd")
     tmp_graphic: Path = tmp_store_path / "image.jpg"
 
