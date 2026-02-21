@@ -40,7 +40,7 @@ class Upload:
         elif "zip" in f.content_type and zipfile.is_zipfile(f.file):
             self._process_zip(f)
         else:
-            raise Exception(f"File {f.filename} -> {name} has invalid MIME type {f.content_type}, or invalid ZIP file")
+            raise Exception(f"File {f.filename} has invalid MIME type {f.content_type}, or invalid ZIP file")
 
     def _process_image(self, f: UploadFile):
         img = Image.open(f.file)
