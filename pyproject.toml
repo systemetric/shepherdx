@@ -10,7 +10,6 @@ dependencies = [
     "coloredlogs>=15.0.1",
     "fastapi>=0.124.4",
     "hopper",
-    "mock-gpio>=0.1.10",
     "pillow>=12.1.0",
     "pydantic>=2.12.5",
     "python-multipart>=0.0.20",
@@ -21,6 +20,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mock-gpio>=0.1.10",
     "mypy>=1.19.1",
     "python-lsp-server>=1.14.0",
 ]

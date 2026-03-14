@@ -7,6 +7,6 @@ class Channels:
     robot_status = "robot/status"
 
     # hopper endpoints
-    robot_control = "robot_control"
+    robot_control = "robot/control"
     camera = "camera";
 
