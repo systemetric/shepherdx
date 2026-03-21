@@ -54,9 +54,29 @@ class ShepherdRunner:
     def run(self):
         asyncio.run(self._run_loop())
 
+    async def _run_loop(self):
+        async with ShepherdMqtt(SHEPHERD_RUN_SERVICE_ID, will=Will(msg="")) as mqttc:
+            self._mqttc = mqttc
+            await mqttc.subscribe(Channels.shepherd_run_control, self._handle_control, ControlMessage)
+
+            try:
+                await self._dispatch_state()
+            except asyncio.exceptions.CancelledError:
+                pass
+
     def _reset_state(self):
         self._mode = Mode.DEV
         self._zone = 0
+        robot.reset.reset()
+
+    def _at_exit(self):
+        if self._user_wait_thread:
+            self._user_wait_thread.cancel("")
+        if self._user_timer_thread:
+            self._user_timer_thread.cancel("")
+
+        self._start_pipe.close()
+        self._kill_usercode()
         robot.reset.reset()
 
     async def _switch_state(self, new_state, old_state):
@@ -76,6 +96,7 @@ class ShepherdRunner:
             self.logger.warn(f"Cannot switch to POST_RUN, needs > INIT, got {self._state}")
 
     async def _handle_control(self, topic: str, msg: ControlMessage):
+        """ Handle a MQTT control message """
         if msg.type == ControlMessageType.START:
             self._mode = msg.mode
             self._zone = msg.zone
@@ -86,6 +107,68 @@ class ShepherdRunner:
                 self._state if self._state == State.READY or self._state == State.RUNNING else State.RUNNING)
         else:
             self.logger.warn(f"Unknown control message type: {msg.type}")
+
+    async def _load_start_graphic(self):
+        """ Copy an image to the temporary initial image location """
+        tmp_graphic = self._config.tmp_graphic
+        start_graphic = self._config.team_logo_path
+        if not start_graphic.exists():
+            start_graphic = self._config.game_logo_path
+        if not start_graphic.exists():
+            self.logger.warn(f"No start graphic found, not creating {tmp_graphic}")
+
+        content = start_graphic.read_bytes()
+        tmp_graphic.write_bytes(content)
+
+    ## STATE ##
+
+    async def _dispatch_state(self):
+        """ Dispatch state transitions forever """
+        while True:
+            # publish new state on status channel, could be used to reset clients
+            await self._mqttc.publish(Channels.robot_status, RobotStatusMessage(new_state=self._state))
+
+            if self._state == State.INIT:
+                await self._state_init()
+            elif self._state == State.READY:
+                await self._state_ready()
+            elif self._state == State.RUNNING:
+                self._state_running()
+            elif self._state == State.POST_RUN:
+                await self._state_post_run()
+
+            # This blocks until the next state update is received
+            self._state = await self._state_queue.get()
+
+    async def _state_init(self):
+        """ Initialize the runner, this only happens once """
+        self.logger.info("INIT")
+
+        self._setup_gpio()
+        atexit.register(self._at_exit)
+
+        await self._load_start_graphic()
+        await self._state_queue.put(State.READY)
+
+    async def _state_ready(self):
+        """ Start the usercode, until it blocks for start info """
+        self.logger.info("READY")
+        await self._start_usercode()
+
+    def _state_running(self):
+        """ Send start info to usercode when transitioning """
+        self.logger.info("RUNNING")
+        self._send_start_info()
+        self._set_usercode_timer()
+
+    async def _state_post_run(self):
+        """ Move usercode back into ready state after running """
+        self.logger.info("POST_RUN")
+        await self._stop_usercode()
+        self._reset_state()
+        await self._state_queue.put(State.READY)
+
+    ## GPIO ##
 
     def _gpio_start(self, _):
         zone = 0
@@ -109,23 +192,7 @@ class ShepherdRunner:
         GPIO.add_event_detect(self._config.start_button_pin, GPIO.FALLING,
             callback=self._gpio_start, bouncetime=self._config.start_button_bounce_time)
 
-    def _at_exit(self):
-        if self._user_wait_thread:
-            self._user_wait_thread.cancel("")
-        if self._user_timer_thread:
-            self._user_timer_thread.cancel("")
-
-        self._start_pipe.close()
-        self._kill_usercode()
-        robot.reset.reset()
-
-    def _send_start_info(self):
-        """ Send start info down the start pipe, to waiting usercode """
-        s = json.dumps({
-            "mode": self._mode,
-            "zone": self._zone,
-        })
-        self._start_pipe.write(s.encode("utf-8") + b'\n')
+    ## USERCODE ##
 
     def _wait_usercode(self, loop: asyncio.AbstractEventLoop, timeout: Optional[float]):
         """ Wait for usercode to exit, and safely transition to POST_RUN, optional timeout """
@@ -142,6 +209,7 @@ class ShepherdRunner:
         loop.call_soon_threadsafe(self._switch_state_user_exit)
 
     def _set_usercode_timer(self):
+        """ Spawn a task to transition state after round end """
         timeout = self._config.round_length if self._mode == Mode.COMP else None
         if timeout == None:
             return
@@ -150,13 +218,20 @@ class ShepherdRunner:
         loop = asyncio.get_running_loop()
         self._user_timer_thread = asyncio.create_task(asyncio.to_thread(self._wait_usercode, loop, timeout))
 
+    def _send_start_info(self):
+        """ Send start info down the start pipe, to waiting usercode """
+        s = json.dumps({
+            "mode": self._mode,
+            "zone": self._zone,
+        })
+        self._start_pipe.write(s.encode("utf-8") + b'\n')
+
     async def _start_usercode(self):
+        """ Start the usercode, create a task to transition on usercode exit """
         self._usercode = subprocess.Popen(
             [
                 sys.executable, "-u", self._config.user_main_path
             ],
-            stdout = self._log_pipe.fd,
-            stderr = self._log_pipe.fd,
             bufsize = 1,
             close_fds = True,
         )
@@ -203,73 +278,6 @@ class ShepherdRunner:
             if e.errno != errno.ESRCH:
                 raise
 
-    async def _run_loop(self):
-        async with ShepherdMqtt(SHEPHERD_RUN_SERVICE_ID, will=Will(msg="")) as mqttc:
-            self._mqttc = mqttc
-            await mqttc.subscribe(Channels.shepherd_run_control, self._handle_control, ControlMessage)
 
-            try:
-                await self._dispatch_state()
-            except asyncio.exceptions.CancelledError:
-                pass
 
-    async def _dispatch_state(self):
-        """ Dispatch state transitions forever """
-        while True:
-            # publish new state on status channel, could be used to reset clients
-            await self._mqttc.publish(Channels.robot_status, RobotStatusMessage(new_state=self._state))
-
-            if self._state == State.INIT:
-                await self._state_init()
-            elif self._state == State.READY:
-                await self._state_ready()
-            elif self._state == State.RUNNING:
-                self._state_running()
-            elif self._state == State.POST_RUN:
-                await self._state_post_run()
-
-            # This blocks until the next state update is received
-            self._state = await self._state_queue.get()
-
-    async def _state_init(self):
-        """ Initialize the runner, this only happens once """
-        self.logger.info("INIT")
-
-        self._setup_gpio()
-        self._setup_hopper()
-
-        atexit.register(self._at_exit)
-
-        await self._load_start_graphic()
-        await self._state_queue.put(State.READY)
-
-    async def _state_ready(self):
-        """ Start the usercode, until it blocks for start info """
-        self.logger.info("READY")
-        await self._start_usercode()
-
-    def _state_running(self):
-        """ Send start info to usercode when transitioning """
-        self.logger.info("RUNNING")
-        self._send_start_info()
-        self._set_usercode_timer()
-
-    async def _state_post_run(self):
-        """ Move usercode back into ready state after running """
-        self.logger.info("POST_RUN")
-        await self._stop_usercode()
-        self._reset_state()
-        await self._state_queue.put(State.READY)
-
-    async def _load_start_graphic(self):
-        """ Copy an image to the temporary initial image location """
-        tmp_graphic = self._config.tmp_graphic
-        start_graphic = self._config.team_logo_path
-        if not start_graphic.exists():
-            start_graphic = self._config.game_logo_path
-        if not start_graphic.exists():
-            self.logger.warn(f"No start graphic found, not creating {tmp_graphic}")
-
-        content = start_graphic.read_bytes()
-        tmp_graphic.write_bytes(content)
 
