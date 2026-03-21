@@ -8,11 +8,11 @@
         "utils": "utils"
       },
       "locked": {
-        "lastModified": 1771437694,
-        "narHash": "sha256-4KgXXX6Gd9DYtMkWlqJ7uGC2wPGMJiVUm4DoJqgtcjw=",
+        "lastModified": 1774097049,
+        "narHash": "sha256-y2PdKAB+8EmZP1dMGYMUbXXJORRZr8Rmgrar1HhiGLs=",
         "owner": "systemetric",
         "repo": "midge",
-        "rev": "0d7692fdb13c2c153b6f91778750e62a86e25d3d",
+        "rev": "a9cac4c074d1bd5a802ccdf0b26bc0fa1e9f61db",
         "type": "github"
       },
       "original": {

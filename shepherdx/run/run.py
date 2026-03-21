@@ -277,7 +277,3 @@ class ShepherdRunner:
         except OSError as e:
             if e.errno != errno.ESRCH:
                 raise
-
-
-
-
