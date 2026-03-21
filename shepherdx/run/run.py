@@ -230,7 +230,9 @@ class ShepherdRunner:
         """ Start the usercode, create a task to transition on usercode exit """
         self._usercode = subprocess.Popen(
             [
-                sys.executable, "-u", self._config.user_main_path
+                # i can't be bothered to orchestrate this
+                "/bin/sh", "-c",
+                f"{sys.executable} -u {self._config.user_main_path} 2>&1 | midge robot {Channels.robot_log}"
             ],
             bufsize = 1,
             close_fds = True,
