@@ -1,18 +1,5 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-
-# Shepherd usercode
-user/projects/
-user/current/
-user/team_logo.jpg
+# Cargo
+target/
 
 # Docs + Sheep static files
 static/docs/*
@@ -22,9 +9,13 @@ static/editor/*
 
 # Testing files
 test.png
+test.jpg
 test.py
 test.txt
 test.zip
 
 # direnv
 .direnv/
+
+# Nix
+result
