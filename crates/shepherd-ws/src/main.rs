@@ -10,7 +10,7 @@ use tokio::{
 use tracing::{error, warn};
 
 use crate::{
-    buffer::LogBuffer,
+    buffer::{CameraBuffer, LogBuffer},
     dispatch::{dispatch_images, dispatch_log_messages, dispatch_mqtt_message},
     ws::{WsState, handle_websocket_connection},
 };
@@ -39,6 +39,7 @@ async fn _main(config: Config) -> Result<()> {
     camera_pipe.open()?;
 
     let (mut log_buffer, log_handle) = LogBuffer::new(config.ws.log_buffer_size);
+    let (mut camera_buffer, camera_handle) = CameraBuffer::new();
 
     let (mut mqtt_client, mut mqtt_event_loop) =
         MqttClient::new(&config.ws.service_id, &config.mqtt.broker, config.mqtt.port);
@@ -95,10 +96,12 @@ async fn _main(config: Config) -> Result<()> {
     // dispatch images forever
     let image_sender = camera_sender.clone();
     let image_topic = config.channel.camera.clone();
+    let image_handle = camera_handle.clone();
     tokio::task::spawn_blocking(move || {
         let _ = dispatch_images(
             camera_pipe,
             image_sender,
+            image_handle,
             image_topic,
             config.ws.hopper_buffer_size,
         );
@@ -116,6 +119,7 @@ async fn _main(config: Config) -> Result<()> {
                             camera: config.channel.camera.clone(),
                             robot_log: config.channel.robot_log.clone(),
                             log_handle: log_handle.clone(),
+                            camera_handle: camera_handle.clone(),
                             cam_rx: camera_sender.subscribe(),
                             msg_rx: msg_sender.subscribe(),
                         }));
@@ -130,6 +134,10 @@ async fn _main(config: Config) -> Result<()> {
 
         _ = log_buffer.dispatch_forever() => {
             error!("log buffer exited?");
+        }
+
+        _ = camera_buffer.dispatch_forever() => {
+            error!("camera buffer exited?");
         }
 
         _ = mqtt_loop => {

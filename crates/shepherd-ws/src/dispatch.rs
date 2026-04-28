@@ -6,7 +6,7 @@ use shepherd_mqtt::messages::RunStatusMessage;
 use tokio::sync::{broadcast, watch};
 use tracing::{debug, error};
 
-use crate::buffer::LogBufferHandle;
+use crate::buffer::{CameraBufferHandle, LogBufferHandle};
 
 /// forward raw mqtt messages to websockets
 pub async fn dispatch_mqtt_message(
@@ -22,6 +22,7 @@ pub async fn dispatch_mqtt_message(
     {
         // clear logs when reset message received
         let _ = log_handle.clear();
+        let _ = sender.send(("robot/log".to_string(), Bytes::from("\x1b[2J")));
     }
 
     // broadcast everywhere, result doesn't matter much
@@ -59,6 +60,7 @@ pub fn dispatch_log_messages(
 pub fn dispatch_images(
     camera_pipe: Pipe,
     sender: watch::Sender<(String, Bytes)>,
+    camera_handle: CameraBufferHandle,
     topic: String,
     buf_size: usize,
 ) -> Result<()> {
@@ -89,7 +91,8 @@ pub fn dispatch_images(
                     // split into image and rest
                     let img = buf.split_to(off);
                     debug!("got image of {} bytes", img.len());
-                    let _ = sender.send((topic.clone(), img.into()));
+                    let _ = sender.send((topic.clone(), img.clone().freeze()));
+                    let _ = camera_handle.set(img.freeze());
                 } else {
                     buf.extend(cbuf);
                 }

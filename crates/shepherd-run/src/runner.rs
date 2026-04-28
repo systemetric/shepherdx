@@ -1,6 +1,8 @@
-use std::{path::PathBuf, time::Duration};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::{Result, anyhow};
+use base64::Engine;
+use hopper::{Pipe, PipeMode};
 use shepherd_common::{Mode, RunState, Zone, config::Config, status_for};
 use shepherd_mqtt::{
     MqttAsyncClient, MqttClient,
@@ -28,6 +30,7 @@ pub struct Runner {
     target_zone: Zone,
     usercode_handle: Option<UsercodeHandle>,
     state_sender: Option<UnboundedSender<StateEvent>>,
+    image_pipe: Option<Arc<Pipe>>,
 }
 
 impl Runner {
@@ -50,6 +53,7 @@ impl Runner {
             target_zone: Zone::from_id(0),
             usercode_handle: None,
             state_sender: None,
+            image_pipe: None,
         })
     }
 
@@ -72,18 +76,38 @@ impl Runner {
         }
     }
 
-    /// Copy start image to temporary location for websockets
+    /// Dump start image into hopper
     async fn load_start_image(&self) -> Result<()> {
         let start_image = if self.config.path.team_image.is_file() {
             &self.config.path.team_image
         } else if self.config.path.game_image.is_file() {
             &self.config.path.game_image
         } else {
-            warn!("no start image found, not creating tmp graphic!");
+            warn!("no start image found, not loading graphic!");
             return Ok(());
         };
 
-        fs::copy(start_image, self.config.path.tmp_root.join("image.jpg")).await?;
+        if let Some(image_pipe) = &self.image_pipe
+            && image_pipe.is_open()
+        {
+            let in_buf = fs::read(start_image).await?;
+            let mut out_buf = vec![0; in_buf.len().div_ceil(3) * 4];
+
+            if let Ok(len) =
+                base64::engine::general_purpose::STANDARD_NO_PAD.encode_slice(in_buf, &mut out_buf)
+            {
+                let image_pipe = image_pipe.clone();
+                tokio::task::spawn_blocking(move || {
+                    out_buf.truncate(len);
+                    out_buf.push(b'\n');
+                    if let Err(e) = image_pipe.write(out_buf.as_slice()) {
+                        warn!("failed to write start image: {e}");
+                    }
+                });
+            }
+        } else {
+            warn!("not loading start image, hopper pipe not open");
+        }
 
         Ok(())
     }
@@ -95,6 +119,9 @@ impl Runner {
         } else {
             return Err(anyhow!("tried to start usercode, but handle was not set?"));
         }
+
+        // dump start image into hopper
+        self.load_start_image().await?;
 
         Ok(())
     }
@@ -251,7 +278,19 @@ impl Runner {
         // destroy previous sessions, if any
         self.state = RunState::Init;
         self.state_sender = None;
+        self.usercode_handle = None;
+        self.image_pipe = None;
         self.reset_state().await;
+
+        // create an image pipe for dumping images
+        let mut image_pipe = Pipe::new(
+            PipeMode::IN,
+            &self.config.run.service_id,
+            &self.config.channel.camera,
+            Some(&self.config.path.hopper),
+        )?;
+        image_pipe.open()?;
+        self.image_pipe = Some(Arc::new(image_pipe));
 
         let (state_sender, state_receiver) = mpsc::unbounded_channel();
 
@@ -297,9 +336,6 @@ impl Runner {
             })),
             Err(e) => warn!("gpio setup failed: {e}"),
         }
-
-        // copy start image to tmp location
-        self.load_start_image().await?;
 
         // initialise usercode manager
         let (mut usercode, usercode_handle) = Usercode::new(self.config.clone())?;

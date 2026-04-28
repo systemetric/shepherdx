@@ -91,3 +91,60 @@ impl LogBuffer {
         }
     }
 }
+
+enum CameraBufferMessage {
+    Set(Bytes),
+}
+
+#[derive(Debug, Clone)]
+pub struct CameraBufferHandle {
+    buffer: Arc<Mutex<Bytes>>,
+    tx: mpsc::UnboundedSender<CameraBufferMessage>,
+}
+
+impl CameraBufferHandle {
+    pub fn set(&self, b: Bytes) -> Result<()> {
+        self.tx.send(CameraBufferMessage::Set(b))?;
+        Ok(())
+    }
+
+    pub async fn get(&self) -> Bytes {
+        self.buffer.lock().await.clone()
+    }
+}
+
+#[derive(Debug)]
+pub struct CameraBuffer {
+    buffer: Arc<Mutex<Bytes>>,
+    rx: mpsc::UnboundedReceiver<CameraBufferMessage>,
+}
+
+impl CameraBuffer {
+    /// Create a new buffer for image storage
+    pub fn new() -> (Self, CameraBufferHandle) {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let buffer = Arc::new(Mutex::new(Bytes::new()));
+
+        (
+            Self {
+                buffer: buffer.clone(),
+                rx,
+            },
+            CameraBufferHandle { buffer, tx },
+        )
+    }
+
+    /// Dispatch events forever
+    pub async fn dispatch_forever(&mut self) -> Result<()> {
+        loop {
+            match self.rx.recv().await {
+                Some(CameraBufferMessage::Set(b)) => {
+                    let mut buffer = self.buffer.lock().await;
+                    *buffer = b;
+                    debug!("set new camera image");
+                }
+                None => continue,
+            }
+        }
+    }
+}

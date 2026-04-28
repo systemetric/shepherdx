@@ -17,7 +17,7 @@
 
 # `shepherd-run`
 
-- [x] handles events from gpio (start button)
+- [ ] handles events from gpio (start button), impl. further testing
 - [x] handles events from mqtt
 - [x] sets up hopper for usercode (log + start)
 - [x] copies initial image to tmp
@@ -25,6 +25,7 @@
 - [x] usercode setup and management
 - [x] sending start info to usercode via hopper
 - [x] internal usercode state tracking
+- [x] dump initial image into hopper
 
 # `shepherd-ws`
 
@@ -33,5 +34,5 @@
 - [x] hopper for usercode logs and camera
 - [x] usercode log and camera message buffering
 - [x] send buffered logs to new websocket clients
-- [ ] initial image loading for camera
+- [x] send buffered images to new clients
 

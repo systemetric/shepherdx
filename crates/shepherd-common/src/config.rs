@@ -69,7 +69,7 @@ fn default_app_host() -> String {
     "0.0.0.0".to_string()
 }
 fn default_app_port() -> u16 {
-    8080
+    80
 }
 fn default_app_static_dir() -> PathBuf {
     default_path_root().join("static")
@@ -210,8 +210,6 @@ impl Default for ChannelConfig {
 pub struct PathConfig {
     #[serde(default = "default_path_root")]
     pub root: PathBuf,
-    #[serde(default = "default_path_tmp_root")]
-    pub tmp_root: PathBuf,
     #[serde(default = "default_path_hopper")]
     pub hopper: PathBuf,
     #[serde(default = "default_path_user_cur_dir")]
@@ -228,9 +226,6 @@ pub struct PathConfig {
 
 fn default_path_root() -> PathBuf {
     PathBuf::from("/var/shepherd")
-}
-fn default_path_tmp_root() -> PathBuf {
-    PathBuf::from("/tmp/shepherd")
 }
 fn default_path_hopper() -> PathBuf {
     PathBuf::from("/run/hopper")
@@ -255,7 +250,6 @@ impl Default for PathConfig {
     fn default() -> Self {
         Self {
             root: default_path_root(),
-            tmp_root: default_path_tmp_root(),
             hopper: default_path_hopper(),
             user_cur_dir: default_path_user_cur_dir(),
             team_image: default_path_team_image(),
@@ -276,7 +270,6 @@ impl Config {
 
     pub fn setup_dirs(&self) -> Result<()> {
         fs::create_dir_all(&self.path.root)?;
-        fs::create_dir_all(&self.path.tmp_root)?;
         fs::create_dir_all(&self.path.hopper)?;
         fs::create_dir_all(&self.path.user_cur_dir)?;
 

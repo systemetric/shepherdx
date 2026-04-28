@@ -14,13 +14,17 @@ use tokio_tungstenite::{
 };
 use tracing::{debug, info};
 
-use crate::{buffer::LogBufferHandle, receiver::MessageReceiver};
+use crate::{
+    buffer::{CameraBufferHandle, LogBufferHandle},
+    receiver::MessageReceiver,
+};
 
 #[derive(Debug)]
 pub struct WsState {
     pub camera: String,
     pub robot_log: String,
     pub log_handle: LogBufferHandle,
+    pub camera_handle: CameraBufferHandle,
     pub cam_rx: watch::Receiver<(String, Bytes)>,
     pub msg_rx: broadcast::Receiver<(String, Bytes)>,
 }
@@ -47,6 +51,12 @@ pub async fn handle_websocket_connection(stream: TcpStream, state: WsState) -> R
     info!("subscription from {:?}, topic {:?}", addr, sub_topic);
 
     let mut rx = if sub_topic == state.camera {
+        // send the existing image
+        let current = state.camera_handle.get().await;
+        ws_tx.send(Message::Binary(current)).await?;
+
+        debug!("sent current image to new client");
+
         MessageReceiver::Image(state.camera, state.cam_rx)
     } else if sub_topic == state.robot_log {
         // send stored logs to new connections
