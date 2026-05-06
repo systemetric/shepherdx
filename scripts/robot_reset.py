@@ -3,8 +3,8 @@
 import sys
 
 try:
-    import robot.reset
-    robot.reset.reset()
+    from robocon.brain.reset import reset
+    reset()
 except ImportError:
     print("failed to locate robot library!")
     sys.exit(1)
